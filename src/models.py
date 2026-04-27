@@ -9,7 +9,7 @@ db = SQLAlchemy()
 class Favorite(db.Model):
     __tablename__ = 'favorite'
     id: Mapped[int] = mapped_column(primary_key=True)
-    user_id: Mapped[int] = mapped_column(ForeignKey('user.id'), nullable=False)
+    user_id: Mapped[int] = mapped_column(ForeignKey('user.id'))
     people_id: Mapped[int] = mapped_column(
         ForeignKey('people.id'), nullable=True)
     planet_id: Mapped[int] = mapped_column(
@@ -19,17 +19,18 @@ class Favorite(db.Model):
     people: Mapped['People'] = relationship(back_populates="favorites")
     planet: Mapped['Planet'] = relationship(back_populates="favorites")
 
+
     def serialize(self):
         return {
             "id": self.id,
             "user_id": self.user_id,
             "people_id": self.people_id,
-            "vehicle_id": self.vehicle_id,
-            "planet_id": self.planet_id
+            "planet_id": self.planet_id,
         }
 
 
 class User(db.Model):
+    __tablename__ = 'user'
     id: Mapped[int] = mapped_column(primary_key=True)
     email: Mapped[str] = mapped_column(
         String(120), unique=True, nullable=False)
@@ -38,12 +39,17 @@ class User(db.Model):
 
     favorites: Mapped[List["Favorite"]] = relationship(back_populates="user")
     profile: Mapped['Profile'] = relationship(back_populates='user')
+    posts: Mapped[List['Posts']] = relationship(back_populates='author')
 
     def serialize(self):
         return {
             "id": self.id,
             "email": self.email,
             # do not serialize the password, its a security breach
+            "profile": self.profile.serialize() if self.profile else None,
+            "posts": [post.serialize() for post in self.posts] if self.posts else None,
+            "favorites": [fav.serialize() for fav in self.favorites] if self.favorites else None
+
         }
 
 
@@ -72,6 +78,7 @@ class People(db.Model):
             "height": self.height,
             "mass": self.mass,
             "skin_color": self.skin_color,
+            "favorites": [fav.serialize() for fav in self.favorites] if self.favorites else None
         }
 
 
@@ -97,7 +104,8 @@ class Planet(db.Model):
             "population": self.population,
             "climate": self.climate,
             "terrain": self.terrain,
-            "surface_water": self.surface_water
+            "surface_water": self.surface_water,
+            "favorites": [fav.serialize() for fav in self.favorites] if self.favorites else None
         }
 
 
@@ -107,3 +115,30 @@ class Profile(db.Model):
     bio: Mapped[str] = mapped_column(Text)
     user_id: Mapped[int] = mapped_column(ForeignKey('user.id'), nullable=False)
     user: Mapped['User'] = relationship(back_populates='profile')
+
+    def serialize(self):
+        return {
+            "id": self.id,
+            "bio": self.bio,
+            "user": self.user.id if self.user else None,
+            "favorites": [fav.serialize() for fav in self.favorites] if self.favorites else None
+        }
+
+
+class Posts(db.Model):
+    __tablename__ = "posts"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    title: Mapped[str] = mapped_column(String(120), nullable=False)
+    body: Mapped[str] = mapped_column(Text, nullable=False)
+
+    user_id: Mapped[int] = mapped_column(ForeignKey('user.id'))
+    author: Mapped['User'] = relationship(back_populates='posts')
+
+    def serialize(self):
+        return {
+            "id": self.id,
+            "title": self.title,
+            "body": self.body,
+            "author": self.author.id if self.author else None,
+            "favorites": [fav.serialize() for fav in self.favorites] if self.favorites else None
+        }
