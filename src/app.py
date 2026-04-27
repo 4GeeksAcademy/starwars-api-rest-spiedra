@@ -52,14 +52,29 @@ def handle_hello():
 
     return jsonify(response_body), 200
 
+# CREATING USE FOR DEVELOPMENT
 
-# Endpoints
+@app.route('/seed', methods=['GET'])
+def seed():
+    user = User(
+        email="test@test.com",
+        password="test",
+        is_active=True
+    )
+    db.session.add(user)
+    db.session.commit()
+
+    return jsonify({"msg": "Seed creado"})
+
+# GET PPL ------------
+
 @app.route("/people", methods=["GET"])
 def get_people():
     people = db.session.execute(select(People)).scalars().all()
     transform = [person.serialize() for person in people]
     return jsonify({"sucess": True, "data": transform}), 200
 
+# ADD PPL ------------
 
 @app.route("/people", methods=["POST"])
 def add_people():
@@ -82,6 +97,7 @@ def add_people():
 
     return jsonify({"sucess": True, "data": new_person.serialize()}), 200
 
+# ADD PLANET -----------
 
 @app.route("/planets", methods=["POST"])
 def add_planet():
@@ -103,12 +119,14 @@ def add_planet():
 
     return jsonify({"sucess": True, "data": new_planet.serialize()}), 200
 
+# GET PPL BY ID -----------
 
 @app.route("/people/byId/<int:id>", methods=["GET"])
 def get_one_person(id):
     person = db.session.get(People, id)
     return jsonify({"sucess": True, "data": person.serialize()}), 200
 
+# UPDATE PPL -------------
 
 @app.route("/people/update/<int:id>", methods=["PUT"])
 def modify_person(id):
@@ -130,6 +148,7 @@ def modify_person(id):
 
     return jsonify({"sucess": True, "data": person.serialize()})
 
+# DELETE PPL -----------
 
 @app.route("/people/delete/<int:id>", methods=["DELETE"])
 def delete_person(id):
@@ -139,45 +158,19 @@ def delete_person(id):
     return jsonify({"sucess": True, "data": "user delete " + str(id)}), 200
 
 
-# @app.route("/fav/new_by_body", methods=["POST"])
-# def new_fav():
-#     body = request.get_json()
-
-#     user_id = body.get("user_id")
-#     people_id = body.get("people_id")
-#     planet_id = body.get("planet_id")
-
-#     if not user_id:
-#         return jsonify({"error": "user_id is required"}), 400
-
-#     user = User.query.get(user_id)
-#     if not user:
-#         return jsonify({"error": "User not found"}), 404
-
-#     new_fav = Favorite(
-#         user_id=user_id,
-#         people_id=people_id,
-#         planet_id=planet_id
-#     )
-
-#     db.session.add(new_fav)
-#     db.session.commit()
-
-#     return jsonify({"msg": "created"}), 200
-
-@app.route("/users/favorites", methods=["GET"])
-def get_favorites():
-
-    favs = Favorite.query.filter_by(user_id=CURRENT_USER_ID).all()
-    return jsonify([f.serialize() for f in favs]), 200
+# GET USER FAVS -----------
 
 @app.route("/users/favorites/<int:id>", methods=["GET"])
 def get_favorites(id):
+
     favs = Favorite.query.filter_by(user_id=id).all()
-    return jsonify([fav.serialize() for fav in favs]), 200
+    if len(favs) == 0:
+        return jsonify({"msg": "No favorites added yet"}), 404
+    return jsonify([f.serialize() for f in favs]), 200
 
+# DELETE USER ALL HIS FAVS -----------
 
-@app.route("/users/favorites", methods=["DELETE"])
+@app.route("/users/favorites/<int:id>", methods=["DELETE"])
 def delete_all_favorites(id):
 
     favs = Favorite.query.filter_by(user_id=id).all()
@@ -192,10 +185,11 @@ def delete_all_favorites(id):
 
     return jsonify({"msg": "All favorites deleted"}), 200
 
+# DELETE ONLY PLANET FROM FAVS
 
 @app.route("/favorite/planet/<int:planet_id>", methods=["DELETE"])
 def delete_fav_planet(planet_id):
-    CURRENT_USER_ID = 1
+    CURRENT_USER_ID = 1 # RETRIEVE THIS VALUE FROM THE LOCAL STORAGE
 
     fav = Favorite.query.filter_by(
         user_id=CURRENT_USER_ID,
@@ -210,6 +204,7 @@ def delete_fav_planet(planet_id):
 
     return jsonify({"msg": "deleted"}), 200
 
+# DELETE ONLY PPL FROM FAVS
 
 @app.route("/favorite/people/<int:people_id>", methods=["DELETE"])
 def delete_fav_people(people_id):
@@ -228,9 +223,11 @@ def delete_fav_people(people_id):
 
     return jsonify({"msg": "deleted"}), 200
 
+# ADD ONLY A PLANET TO FAVS, SO WE CAND DELETE LATER ONLY THIS FAV
+
 @app.route("/favorite/planet/<int:planet_id>", methods=["POST"])
 def add_fav_planet(planet_id):
-    CURRENT_USER_ID = 1
+    CURRENT_USER_ID = 1  
 
     fav = Favorite(
         user_id=CURRENT_USER_ID,
@@ -241,6 +238,8 @@ def add_fav_planet(planet_id):
     db.session.commit()
 
     return jsonify({"msg": "planet added to favorites"}), 201
+
+# ADD ONLY A PERSON TO FAVS, SO WE CAND DELETE LATER ONLY THIS FAV
 
 @app.route("/favorite/people/<int:people_id>", methods=["POST"])
 def add_fav_people(people_id):
@@ -255,6 +254,7 @@ def add_fav_people(people_id):
     db.session.commit()
 
     return jsonify({"msg": "people added to favorites"}), 201
+
 
 # this only runs if `$ python src/app.py` is executed
 if __name__ == '__main__':
